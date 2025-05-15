@@ -107,7 +107,10 @@ async fn main() -> Result<()> {
         .context("Getting VOD media")?;
     info!("Found {} segments to download!", media.segments.len());
 
-    let temp_download_dir = std::env::temp_dir().join(format!("vod-squirrel-{vod_id}/"));
+    let temp_download_dir = args
+        .temp_dir
+        .unwrap_or_else(std::env::temp_dir)
+        .join(format!("vod-squirrel-{vod_id}/"));
     info!("Downloading on {temp_download_dir:?}");
     match tokio::fs::create_dir(&temp_download_dir).await {
         Ok(()) => {}
