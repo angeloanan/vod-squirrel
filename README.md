@@ -1,3 +1,4 @@
+[![wakatime](https://wakatime.com/badge/github/angeloanan/vod-squirrel.svg)](https://wakatime.com/badge/github/angeloanan/vod-squirrel)
 # VOD Squirrel
 
 Archive your favorite Twitch.TV streams to YouTube!
@@ -59,3 +60,5 @@ cargo build --release
 ```
 
 ## Motivation
+
+To be written...
