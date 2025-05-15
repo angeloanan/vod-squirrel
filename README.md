@@ -1,0 +1,62 @@
+# VOD Squirrel
+
+Archive your favorite Twitch.TV streams to YouTube!
+
+See the [motivation of the project](#motivation) below.
+
+## Usage
+
+Download the latest release from the [releases page](https://github.com/angeloanan/vod-squirrel/releases) or development build via [commit workflows](https://github.com/angeloanan/vod-squirrel/actions/workflows/dev.yml).
+
+If you are on Mac / Linux, allow the app to be run by `chmod +x vod-squirrel`.
+
+Run the app with the VOD ID / URL you want to archive as an argument
+
+```sh
+$ ./vod-squirrel https://twitch.tv/videos/123456789
+```
+
+> [!IMPORTANT]
+> When archiving a video longer than 2h40m, concatenating video chunks might fail due to `Too many files open`. You can fix this by increasing your system's `ulimit` for the maximum number of open files (`ulimit -n 100000`).
+> 
+> You might want to check the OS' global maximum number of open files before setting the `ulimit` above (`cat /proc/sys/fs/file-max`).
+
+You can use the `--help` flag to get a list of all available options:
+
+```sh
+$ ./vod-squirrel --help
+Downloads a Twitch.tv Video (VOD) and uploads it to YouTube for archival purposes
+
+Usage: vod-squirrel [OPTIONS] <VOD>
+
+Arguments:
+  <VOD>  VOD ID to process
+
+Options:
+  -c, --cleanup                    Cleanups the remnant of the clips afterward [default: true]
+  -p, --parallelism <PARALLELISM>  The amount of parallel downloads [default: 10]
+      --temp-dir <TEMP_DIR>        Defaults to using system's temporary directory
+  -d, --daemon                     Runs the program as a background daemon
+  -h, --help                       Print help
+  -V, --version                    Print version
+```
+
+### Monitor Mode
+
+Work in progress.
+
+## Building
+
+This project uses [Rust](https://www.rust-lang.org/) and [Cargo](https://doc.rust-lang.org/cargo/).
+
+You do not need to have OpenSSL installed to build the project as the project uses the [rustls](https://github.com/rustls/rustls) crate to provide TLS support.
+
+To build the project, clone the repository and run `cargo build --release`.
+
+```bash
+git clone https://github.com/angeloanan/vod-squirrel.git
+cd vod-squirrel
+cargo build --release
+```
+
+## Motivation

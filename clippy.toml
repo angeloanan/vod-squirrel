@@ -1,0 +1,2 @@
+enforce-iter-loop-reborrow = true
+doc-valid-idents = ["YouTube"]
