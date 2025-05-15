@@ -61,4 +61,8 @@ cargo build --release
 
 ## Motivation
 
-To be written...
+* Twitch VOD expires after 60 days (or lesser for non-partners!)
+* [Twitch is implementing a 100 hours storage limit on highlights & upload](https://gamerant.com/twitch-100-hour-storage-limit-highlights-uploads-video-on-demand-change/)
+* Twitch has slow CDN from where I live
+* Manually downloading & uploading VODs is annoying
+* VOD channels usually take some time before they upload a new VOD
