@@ -49,12 +49,6 @@ struct Args {
     /// Defaults to using system's temporary directory
     #[arg(long)]
     temp_dir: Option<PathBuf>,
-
-    // /// The username of the streamer to be monitored
-    // username: String,
-    /// Runs the program as a background daemon
-    #[arg(short, long, default_value_t = false)]
-    daemon: bool,
 }
 
 #[allow(clippy::too_many_lines)]

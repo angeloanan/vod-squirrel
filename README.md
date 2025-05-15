@@ -36,7 +36,6 @@ Options:
   -c, --cleanup                    Cleanups the remnant of the clips afterward [default: true]
   -p, --parallelism <PARALLELISM>  The amount of parallel downloads [default: 10]
       --temp-dir <TEMP_DIR>        Defaults to using system's temporary directory
-  -d, --daemon                     Runs the program as a background daemon
   -h, --help                       Print help
   -V, --version                    Print version
 ```
