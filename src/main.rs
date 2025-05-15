@@ -35,7 +35,7 @@ pub mod youtube;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// VOD ID to process
+    /// Twitch video ID / URL to process
     vod: String,
 
     /// Cleanups the remnant of the clips afterward [default: true]

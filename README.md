@@ -30,7 +30,7 @@ Downloads a Twitch.tv Video (VOD) and uploads it to YouTube for archival purpose
 Usage: vod-squirrel [OPTIONS] <VOD>
 
 Arguments:
-  <VOD>  VOD ID to process
+  <VOD>  Twitch video ID / URL to process
 
 Options:
   -c, --cleanup                    Cleanups the remnant of the clips afterward [default: true]
