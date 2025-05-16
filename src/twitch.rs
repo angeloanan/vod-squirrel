@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use anyhow::{Context, Ok, Result, bail};
+use anyhow::{Context, Ok, Result, bail, ensure};
 use chrono::Utc;
 use m3u8_rs::{MasterPlaylist, MediaPlaylist};
 use regex::Regex;
@@ -17,33 +17,34 @@ pub const TWITCH_PUBLIC_CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideoInfo {
+    pub id: String,
     pub title: String,
-    #[serde(rename = "thumbnailURLs")]
-    pub thumbnail_url: Vec<String>,
+    pub description: Option<String>,
     pub created_at: chrono::DateTime<Utc>,
     pub length_seconds: u64,
-    pub owner: Channel,
     pub view_count: u64,
+    pub status: Status,
     pub game: Game,
-    pub description: Option<String>,
-    pub status: String,
+    pub owner: Channel,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Game {
-    pub id: String,
-    pub display_name: String,
-    #[serde(rename = "boxArtURL")]
-    pub box_art_url: String,
+pub enum Status {
+    RECORDED,
+    RECORDING,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Channel {
-    pub id: String,
-    pub display_name: String,
     pub login: String,
+    pub display_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Game {
+    pub display_name: String,
 }
 
 #[instrument(skip(client))]
@@ -51,28 +52,22 @@ pub async fn get_vod_info(client: reqwest::Client, video_id: u64) -> Result<Opti
     let req = client
         .post("https://gql.twitch.tv/gql")
         .json(&json!({
-            "query": format!("{{
-                video(id: \"{video_id}\") {{
+            "query": "query VideoInfo($id: ID) {
+                video(id: $id) {
+                    id
                     title
-                    thumbnailURLs(height: 1080, width: 1920)
+                    description
                     createdAt
                     lengthSeconds
-                    owner {{
-                        id
-                        displayName
-                        login
-                    }}
                     viewCount
-                    game {{
-                        id
-                        displayName
-                        boxArtURL
-                    }}
-                    description
                     status
-                }}
-            }}"),
-            "variables": {}
+                    game { displayName }
+                    owner { login, displayName }
+                }
+            }",
+            "variables": {
+                "id": video_id.to_string()
+            }
         }))
         .send()
         .await
@@ -106,31 +101,20 @@ pub async fn get_vod_tokens(
         req = req.header("Authorization", format!("Bearer {token}"));
     }
 
-    let req = req.json(&json!({
-            "query": "query PlaybackAccessToken_Template($login: String!, $isLive: Boolean!, $vodID: ID!, $isVod: Boolean!, $playerType: String!) {
-                streamPlaybackAccessToken(
-                    channelName: $login
-                    params: {platform: \"web\", playerBackend: \"mediaplayer\", playerType: $playerType}
-                ) @include(if: $isLive) {
-                    value
-                    signature
-                    __typename
-                }
+    let req = req
+        .json(&json!({
+            "query": "query GetPlaybackAccessToken($id: ID!) {
                 videoPlaybackAccessToken(
-                    id: $vodID
-                    params: {platform: \"web\", playerBackend: \"mediaplayer\", playerType: $playerType}
-                ) @include(if: $isVod) {
+                    id: $id
+                    params: {platform: \"web\", playerBackend: \"mediaplayer\", playerType: \"embed\"}
+                ) {
                     value
                     signature
                     __typename
                 }
             }",
             "variables": {
-                "isLive": false,
-                "login": "",
-                "isVod": true,
-                "vodID": video_id.to_string(),
-                "playerType": "embed"
+                "id": video_id.to_string(),
             }
         }))
         .send()
