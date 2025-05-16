@@ -1,9 +1,9 @@
-use anyhow::{Result, ensure};
+use anyhow::{Result, bail};
 use reqwest::{Body, Client, header::AUTHORIZATION};
 use serde_json::json;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
-use tracing::instrument;
+use tracing::{error, instrument};
 
 #[derive(Debug, Default, Clone)]
 pub struct VideoDetail<'a> {
@@ -45,10 +45,16 @@ pub async fn upload_video<'a>(
         .await
         .unwrap();
 
-    ensure!(
-        init_upload_req.status() == 200,
-        "Unable to initialize video upload"
-    );
+    if !init_upload_req.status().is_success() {
+        error!(
+            "Unable to initialize YouTube upload. Status {}",
+            init_upload_req.status()
+        );
+        let body = init_upload_req.text().await.unwrap();
+        error!(body);
+        bail!("Unable to initialize YouTube upload");
+    }
+
     let upload_url = init_upload_req
         .headers()
         .get("Location")
