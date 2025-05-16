@@ -1,3 +1,6 @@
+use rlimit::Resource;
+use tracing::warn;
+
 /// Truncates a string to a maximum length, adding `...` to the end if it was truncated.
 ///
 /// This function will continuously try to reduce length if string is being
@@ -24,4 +27,15 @@ pub fn truncate_string(string: &impl ToString, max_length: usize) -> String {
 
     // SAFETY: Should never panic due to the above
     format!("{}...", truncated.unwrap())
+}
+
+/// # Panics
+pub fn warn_ulimit() {
+    let (limit, _) = rlimit::getrlimit(Resource::NOFILE).unwrap();
+    if limit <= 2048 {
+        warn!(
+            "Your file limit is very low which may introduce an error while processing long videos. Consider raising your file limit via `ulimit -n 10240`"
+        );
+    }
+    rlimit::setrlimit(Resource::NOFILE, 10240, 20480).unwrap();
 }

@@ -23,7 +23,7 @@ use twitch::{
     TWITCH_PUBLIC_CLIENT_ID, TWITCH_VIDEO_ID_REGEX, get_vod_info, get_vod_media,
     get_vod_playlist_file, get_vod_tokens,
 };
-use util::truncate_string;
+use util::{truncate_string, warn_ulimit};
 use youtube::{VideoDetail, upload_video};
 
 pub mod ffmpeg;
@@ -57,7 +57,8 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     dotenvy::dotenv().ok();
 
-    assert!((ffmpeg::is_installed().await), "FFMPEG is not installed!");
+    assert!((ffmpeg::is_installed().await), "ffmpeg is not installed!");
+    warn_ulimit();
 
     let args = Args::parse();
     let oauth_token = std::env::var("OAUTH_TOKEN").expect("env OAUTH_TOKEN not provided");
