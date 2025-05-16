@@ -103,9 +103,17 @@ async fn main() -> Result<()> {
 
     let temp_download_dir = args
         .temp_dir
-        .unwrap_or_else(std::env::temp_dir)
+        .map_or_else(std::env::temp_dir, |p| {
+            if p.is_dir() {
+                return p;
+            }
+            panic!("Provided temporary directory is not a valid directory!");
+        })
         .join(format!("vod-squirrel-{vod_id}/"));
-    info!("Downloading on {temp_download_dir:?}");
+    info!(
+        "Downloading on {temp_download_dir:?} with {} parallellism",
+        args.parallelism
+    );
     match tokio::fs::create_dir(&temp_download_dir).await {
         Ok(()) => {}
         Err(e) if e.kind() == ErrorKind::AlreadyExists => {
