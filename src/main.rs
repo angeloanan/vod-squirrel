@@ -43,10 +43,11 @@ struct Args {
     cleanup: bool,
 
     /// The amount of parallel downloads
-    #[arg(short, long, default_value_t = 10)]
+    #[arg(short, long, default_value_t = 20)]
     parallelism: usize,
 
-    /// Defaults to using system's temporary directory
+
+    /// Directory where videos are processed (defaults to system's temporary directory)
     #[arg(long)]
     temp_dir: Option<PathBuf>,
 }

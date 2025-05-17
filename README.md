@@ -35,8 +35,8 @@ Arguments:
 
 Options:
   -c, --cleanup                    Cleanups the remnant of the clips afterward [default: true]
-  -p, --parallelism <PARALLELISM>  The amount of parallel downloads [default: 10]
-      --temp-dir <TEMP_DIR>        Defaults to using system's temporary directory
+  -p, --parallelism <PARALLELISM>  The amount of parallel downloads [default: 20]
+      --temp-dir <TEMP_DIR>        Directory where videos are processed (defaults to system's temporary directory)
   -h, --help                       Print help
   -V, --version                    Print version
 ```
