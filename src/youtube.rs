@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use reqwest::{Body, Client, header::AUTHORIZATION};
 use serde_json::json;
 use tokio::fs::File;
@@ -43,7 +43,7 @@ pub async fn upload_video<'a>(
         }))
         .send()
         .await
-        .unwrap();
+        .context("Initializing upload")?;
 
     if !init_upload_req.status().is_success() {
         error!(

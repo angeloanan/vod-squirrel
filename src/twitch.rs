@@ -71,19 +71,15 @@ pub async fn get_vod_info(client: reqwest::Client, video_id: u64) -> Result<Opti
         }))
         .send()
         .await
-        .context("Fetching VOD info")
-        .unwrap();
+        .context("Fetching VOD info")?;
 
     let mut json = req
         .json::<Value>()
         .await
-        .context("Parsing VOD info request")
-        .unwrap();
+        .context("Parsing VOD info request")?;
 
-    Ok(
-        serde_json::from_value::<Option<VideoInfo>>(json["data"]["video"].take())
-            .context("Parsing VOD info data")?,
-    )
+    serde_json::from_value::<Option<VideoInfo>>(json["data"]["video"].take())
+        .context("Parsing VOD info data")
 }
 
 /// Fetches the access tokens used to access a VOD's m3u8 master playlist file
@@ -118,10 +114,9 @@ pub async fn get_vod_tokens(
             }
         }))
         .send()
-        .await
-        .unwrap();
+        .await.context("Fetching VOD tokens")?;
 
-    let res = req.json::<Value>().await.unwrap();
+    let res = req.json::<Value>().await.context("Parsing VOD tokens")?;
     let Some(token) = res["data"]["videoPlaybackAccessToken"].as_object() else {
         bail!("`videoPlaybackAccessToken` does not exist. The VOD might be private!")
     };
