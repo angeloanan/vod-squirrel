@@ -7,6 +7,28 @@ See the [motivation of the project](#motivation) below.
 
 ## Usage
 
+### Prerequisites
+
+You will need to get a Google OAuth token with `https://www.googleapis.com/auth/youtube.upload` scope.
+
+The easiest way of doing it is to utilize the [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
+
+<details>
+<summary>Click to see detailed instructions</summary>
+
+1. Visit the [Google OAuth 2.0 Playground](https://developers.google.com/oauthplayground)
+2. On the left navbar, select the `YouTube Data API v3` -> `https://www.googleapis.com/auth/youtube.upload` scope
+3. Click on **Authorize APIs**
+4. Login / select your Google account and allow the app to access your YouTube account
+5. Once redirected back to the playground, click on **"Exchange authorization code for tokens"** button
+6. Copy the `Access token` string. (You might need renavigate to the `Step 2` tab to see the access token)
+
+</details>
+
+Once you have an **access token**, set it as the environment variable `OAUTH_TOKEN`.
+
+### Running the App
+
 Download the latest release from the [releases page](https://github.com/angeloanan/vod-squirrel/releases) or development build via [commit workflows](https://github.com/angeloanan/vod-squirrel/actions/workflows/dev.yml).
 
 If you are on Mac / Linux, allow the app to be run by `chmod +x vod-squirrel`.
@@ -18,9 +40,9 @@ $ ./vod-squirrel https://twitch.tv/videos/123456789
 ```
 
 > [!IMPORTANT]
-> When archiving a video longer than 2h40m, concatenating video chunks might fail due to `Too many files open`. You can fix this by increasing your system's `ulimit` for the maximum number of open files (`ulimit -n 100000`).
+> Archiving a long video might fail due to error `Too many files open`. You can fix this by increasing your system's `ulimit` for the maximum number of open files (`ulimit -n 10240`).
 > 
-> You might want to check the OS' global maximum number of open files before setting the `ulimit` above (`cat /proc/sys/fs/file-max`).
+> You might want to check the OS' global maximum number of open files before setting the `ulimit` value above (`cat /proc/sys/fs/file-max`).
 
 You can use the `--help` flag to get a list of all available options:
 
