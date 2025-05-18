@@ -16,8 +16,9 @@ use reqwest::{
     Url,
     header::{HeaderMap, HeaderValue},
 };
-use tokio::{fs::File, io::AsyncWriteExt, sync::Semaphore};
+use tokio::{fs::File, io::AsyncWriteExt, select, sync::Semaphore};
 use tokio_stream::StreamExt;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
 use twitch::{
     TWITCH_PUBLIC_CLIENT_ID, TWITCH_VIDEO_ID_REGEX, get_vod_info, get_vod_media,
@@ -65,6 +66,9 @@ async fn main() -> Result<()> {
     let oauth_token = std::env::var("OAUTH_TOKEN").expect("env OAUTH_TOKEN not provided");
 
     let client = init_http_client();
+    let ct = CancellationToken::new();
+
+    spawn_ct_watcher(ct.clone());
 
     let vod_id = if let Ok(i) = args.vod.parse::<u64>() {
         i
@@ -134,13 +138,18 @@ async fn main() -> Result<()> {
         // This is not a simple 1..length as stream name might contain `-muted` for silenced chunks
         segment_file_names.push(segment.uri.clone());
 
+        let ct = ct.clone();
         let permit = download_parallelism.clone();
         let client = client.clone();
         let media_url = Url::from_str(&highest_quality.uri)?.join(&segment.uri)?;
         let temp_file_path = temp_download_dir.clone().join(&segment.uri);
 
         download_tasks.spawn(async move {
-            let _permit = permit.acquire().await.unwrap();
+            let _permit = select! {
+                () = ct.cancelled() => return,
+                p = permit.acquire() => p.unwrap()
+            };
+
             let req = client.get(media_url).send().await.unwrap();
             let mut res_stream = req.bytes_stream();
 
@@ -226,4 +235,12 @@ fn init_http_client() -> reqwest::Client {
         .default_headers(headers)
         .build()
         .expect("Unable to build HTTP client")
+}
+
+fn spawn_ct_watcher(ct: CancellationToken) {
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        info!("Caught CTRL+C signal!");
+        ct.cancel();
+    });
 }
