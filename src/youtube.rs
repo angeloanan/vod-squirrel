@@ -62,7 +62,14 @@ pub async fn upload_video<'a>(
         .to_str()
         .unwrap();
 
-    let pb = indicatif::ProgressBar::new(20);
+    let pb = indicatif::ProgressBar::new(file_size);
+    pb.set_style(
+        indicatif::ProgressStyle::with_template(
+            "[{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+        )
+        .unwrap(),
+    );
+
     let file = pb.wrap_async_read(file);
 
     let req = client
