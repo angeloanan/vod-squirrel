@@ -37,5 +37,4 @@ pub fn warn_ulimit() {
             "Your file limit is very low which may introduce an error while processing long videos. Consider raising your file limit via `ulimit -n 10240`"
         );
     }
-    rlimit::setrlimit(Resource::NOFILE, 10240, 20480).unwrap();
 }

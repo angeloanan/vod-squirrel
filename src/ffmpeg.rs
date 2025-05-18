@@ -1,7 +1,7 @@
 use std::{io::ErrorKind, path::Path, process::Stdio, str::FromStr};
 
 use anyhow::{Context, Result, bail};
-use tracing::error;
+use tracing::{debug, error};
 
 /// Checks if ffmpeg is installed / available in PATH
 ///
@@ -9,6 +9,7 @@ use tracing::error;
 /// Will panic if the child process cannot be spawned or if there is an error while awaiting its status.\
 /// See `tokio::process::Command.status()`
 pub async fn is_installed() -> bool {
+    debug!("Checking for ffmpeg installation");
     tokio::process::Command::new("ffmpeg")
         .arg("-version")
         .stderr(Stdio::null())
