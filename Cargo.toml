@@ -19,9 +19,11 @@ anyhow = "1.0.98"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.38", features = ["derive"] }
 dotenvy = "0.15.7"
+futures-util = "0.3.31"
 indicatif = { version = "0.17.11", features = ["tokio"] }
 indoc = "2.0.6"
 m3u8-rs = "6.0.0"
+pkce = "0.2.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.15", default-features = false, features = [
   "http2",
@@ -31,12 +33,14 @@ reqwest = { version = "0.12.15", default-features = false, features = [
   "rustls-tls-webpki-roots",
   "stream",
 ] }
+# https://github.com/jgraef/reqwest-websocket/issues/43
+reqwest-websocket = { git = "https://github.com/jgraef/reqwest-websocket/", branch = "main" }
 rlimit = "0.10.2"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 tokio = { version = "1.45.0", features = ["full"] }
 tokio-stream = "0.1.17"
-tokio-util = { version = "0.7.15", features = ["codec", "io"] }
+tokio-util = { version = "0.7.15", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 

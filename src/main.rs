@@ -28,6 +28,7 @@ use util::{truncate_string, warn_ulimit};
 use youtube::{VideoDetail, upload_video};
 
 pub mod ffmpeg;
+pub mod google;
 pub mod twitch;
 pub mod util;
 pub mod youtube;
@@ -63,12 +64,12 @@ async fn main() -> Result<()> {
     warn_ulimit();
 
     let args = Args::parse();
-    let oauth_token = std::env::var("OAUTH_TOKEN").expect("env OAUTH_TOKEN not provided");
 
     let client = init_http_client();
     let ct = CancellationToken::new();
 
     spawn_ct_watcher(ct.clone());
+    let access_token = google::watch_access_token(ct.clone());
 
     let vod_id = if let Ok(i) = args.vod.parse::<u64>() {
         i
@@ -188,7 +189,7 @@ async fn main() -> Result<()> {
     info!("Uploading video to Youtube...");
     upload_video(
         client,
-        &oauth_token,
+        &access_token.borrow().clone().unwrap(),
         VideoDetail {
             title: &format!(
                 "[{}] {}",
