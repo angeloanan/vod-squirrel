@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use anyhow::{Context, Ok, Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use chrono::Utc;
 use m3u8_rs::{MasterPlaylist, MediaPlaylist};
 use regex::Regex;
@@ -13,6 +13,71 @@ pub static TWITCH_VIDEO_ID_REGEX: LazyLock<Regex> =
 
 // https://github.com/SuperSonicHub1/twitch-graphql-api#getting-your-client-id
 pub const TWITCH_PUBLIC_CLIENT_ID: &str = "kimne78kx3ncx6brgo4mv6wki5h1ko";
+
+/// Returns channel's past broadcast
+///
+/// Returns `None` if channel is not found
+///
+/// # Errors
+/// Errors when there's a network error or when JSON response is invalid
+pub async fn list_channel_videos(
+    client: reqwest::Client,
+    channel_id: u64,
+) -> Result<Option<Vec<VideoInfo>>> {
+    let Ok(req) = client
+        .post("https://gql.twitch.tv/gql")
+        .json(&json!({
+            "query": "query LatestChannelVideo($id: ID, $type: BroadcastType = ARCHIVE, $limit: Int = 10) {
+                user(id: $id) {
+                    videos(first: $limit, type: $type) {
+                        edges {
+                            node {
+                                id
+                                title
+                                description
+                                createdAt
+                                lengthSeconds
+                                viewCount
+                                status
+                                game { displayName }
+                                owner { login, displayName }
+                            }
+                        }
+                    }
+                }
+            }",
+            "variables": {
+                "id": channel_id.to_string()
+            }
+        }))
+        .send()
+        .await
+        .context("Fetching channel videos") else {
+            bail!("Error occurred while fetching list of channel video")
+        };
+
+    ensure!(req.status().is_success(), "Failed to get channel videos");
+
+    let mut json = req
+        .json::<Value>()
+        .await
+        .context("Parsing VOD info request")
+        .unwrap();
+
+    let mut user = json["data"]["user"].take();
+    if user.is_null() {
+        return Ok(None);
+    }
+
+    let mut edges = user["videos"]["edges"].take();
+    let videos = edges
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .map(|e| serde_json::from_value(e["node"].take()).unwrap())
+        .collect::<Vec<VideoInfo>>();
+    Ok(Some(videos))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
