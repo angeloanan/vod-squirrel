@@ -105,7 +105,8 @@ async fn main() -> Result<()> {
     let media = get_vod_media(client.clone(), &highest_quality.uri)
         .await
         .context("Getting VOD media")?;
-    info!("Found {} segments to download!", media.segments.len());
+    let segment_count = media.segments.len();
+    info!("Found {segment_count} segments to download!");
 
     let temp_download_dir = args
         .temp_dir
@@ -131,6 +132,7 @@ async fn main() -> Result<()> {
     let download_parallelism = Arc::new(Semaphore::new(args.parallelism));
     let mut download_tasks = tokio::task::JoinSet::new();
     let mut segment_file_names = Vec::new();
+    let pb = indicatif::ProgressBar::new(segment_count as u64);
 
     // Start queueing for downloads
     for segment in media.segments {
@@ -139,6 +141,7 @@ async fn main() -> Result<()> {
         segment_file_names.push(segment.uri.clone());
 
         let ct = ct.clone();
+        let pb = pb.clone();
         let permit = download_parallelism.clone();
         let client = client.clone();
         let media_url = Url::from_str(&highest_quality.uri)?.join(&segment.uri)?;
@@ -159,14 +162,19 @@ async fn main() -> Result<()> {
                 let data = data
                     .context(format!("Downloading video stream {}", segment.uri))
                     .unwrap();
-                file.write_all(&data).await.unwrap();
+                file.write_all(&data)
+                    .await
+                    .context("Writing video data to disk")
+                    .unwrap();
             }
 
             debug!("Done downloading {}!", segment.uri);
+            pb.inc(1);
         });
     }
 
     download_tasks.join_all().await;
+    pb.finish_and_clear();
     info!("Done downloading all chunks!");
 
     info!("Concatenating video chunks now");

@@ -62,6 +62,9 @@ pub async fn upload_video<'a>(
         .to_str()
         .unwrap();
 
+    let pb = indicatif::ProgressBar::new(20);
+    let file = pb.wrap_async_read(file);
+
     let req = client
         .put(upload_url)
         .header(AUTHORIZATION, format!("Bearer {oauth_token}"))
@@ -69,6 +72,7 @@ pub async fn upload_video<'a>(
         .send()
         .await
         .unwrap();
+    pb.finish_and_clear();
     println!("{}, {}", req.status(), req.text().await.unwrap());
 
     Ok(())
