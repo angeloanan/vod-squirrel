@@ -1,13 +1,17 @@
 [![wakatime](https://wakatime.com/badge/github/angeloanan/vod-squirrel.svg)](https://wakatime.com/badge/github/angeloanan/vod-squirrel)
 # VOD Squirrel
 
-Archive your favorite Twitch.TV streams to YouTube!
+Archive your favorite Twitch.tv streams to YouTube
 
-See the [motivation of the project](#motivation) below.
+VOD Squirrel streamlines the process of downloading Twitch VODs and uploading them to YouTube for archival purposes. It is designed to be **fast, efficient, and easy to use**.
+
+The app downloads the VOD in parallel chunks, ensuring that the download process is as quick as possible. Once the download is complete, it automatically "joins" the chunks and uploads the VOD to YouTube.
 
 ## Usage
 
 ### Prerequisites
+
+An `ffmpeg` installation is required.
 
 You will need to get a Google OAuth token with `https://www.googleapis.com/auth/youtube.upload` scope.
 
