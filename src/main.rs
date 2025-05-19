@@ -27,6 +27,7 @@ use twitch::{
 use util::{truncate_string, warn_ulimit};
 use youtube::{VideoDetail, upload_video};
 
+pub mod eventsub;
 pub mod ffmpeg;
 pub mod google;
 pub mod twitch;
