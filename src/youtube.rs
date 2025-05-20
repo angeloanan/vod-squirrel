@@ -65,7 +65,7 @@ pub async fn upload_video<'a>(
     let pb = indicatif::ProgressBar::new(file_size);
     pb.set_style(
         indicatif::ProgressStyle::with_template(
-            "[{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})",
+            "[{elapsed_precise}] [{wide_bar}] {bytes}/{total_bytes} ({decimal_bytes_per_sec} {eta} left)",
         )
         .unwrap(),
     );
