@@ -30,6 +30,7 @@ use youtube::{VideoDetail, upload_video};
 pub mod eventsub;
 pub mod ffmpeg;
 pub mod google;
+pub mod oauth_server;
 pub mod twitch;
 pub mod util;
 pub mod youtube;
