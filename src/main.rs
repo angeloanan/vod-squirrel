@@ -94,7 +94,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
     dotenvy::dotenv().ok();
 
-    assert!((ffmpeg::is_installed().await), "ffmpeg is not installed!");
     warn_ulimit();
 
     let args = Args::parse();
@@ -126,9 +125,18 @@ async fn main() -> Result<()> {
             info!(
                 "Authorization complete! Please put the following string as REFRESH_TOKEN: {refresh_token}"
             );
+            if !ffmpeg::is_installed().await {
+                warn!(
+                    "`ffmpeg` is not installed - Please install it before downloading / archiving / monitoring using this tool!"
+                );
+            }
         }
 
         Commands::Download { vod, path } => {
+            assert!(
+                (ffmpeg::is_installed().await),
+                "Unable to continue because `ffmpeg` is not installed!"
+            );
             let output_file = path.canonicalize().expect("Invalid path given!");
 
             let vod_id = extract_video_id(&vod)
@@ -164,6 +172,10 @@ async fn main() -> Result<()> {
         }
 
         Commands::Archive { vod } => {
+            assert!(
+                (ffmpeg::is_installed().await),
+                "Unable to continue because `ffmpeg` is not installed!"
+            );
             let access_token = google::watch_access_token(ct.clone());
             let vod_id = extract_video_id(&vod)
                 .expect("Unable to extract for video ID. Did you paste in the correct URL / ID?");
@@ -207,6 +219,10 @@ async fn main() -> Result<()> {
         }
 
         Commands::Monitor { channel_id } => {
+            assert!(
+                (ffmpeg::is_installed().await),
+                "Unable to continue because `ffmpeg` is not installed!"
+            );
             let access_token = google::watch_access_token(ct.clone());
 
             let mut receiver = eventsub::listen_for_offline(ct.clone(), channel_id)
