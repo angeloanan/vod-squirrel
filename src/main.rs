@@ -161,13 +161,15 @@ async fn main() -> Result<()> {
                 return Ok(());
             }
 
-            tokio::fs::rename(file, output_file)
+            tokio::fs::rename(&file, output_file)
                 .await
                 .expect("Unable to move file!");
 
             if args.cleanup {
                 info!("Cleaning up processing remnants");
-                tokio::fs::remove_dir_all(temp_download_dir).await.unwrap();
+                tokio::fs::remove_dir_all(file.parent().unwrap())
+                    .await
+                    .unwrap();
             }
         }
 
@@ -214,7 +216,9 @@ async fn main() -> Result<()> {
 
             if args.cleanup {
                 info!("Cleaning up processing remnants");
-                tokio::fs::remove_dir_all(temp_download_dir).await.unwrap();
+                tokio::fs::remove_dir_all(file_path.parent().unwrap())
+                    .await
+                    .unwrap();
             }
         }
 
@@ -272,7 +276,9 @@ async fn main() -> Result<()> {
 
                 if args.cleanup {
                     info!("Cleaning up processing remnants");
-                    tokio::fs::remove_dir_all(temp_download_dir).await.unwrap();
+                    tokio::fs::remove_dir_all(file_path.parent().unwrap())
+                        .await
+                        .unwrap();
                 }
             }
         }
