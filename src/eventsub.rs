@@ -14,12 +14,15 @@ use tracing::{error, info, instrument, warn};
 const TWITCH_EVENTSUB_ADD_URL: &str = "https://api.twitch.tv/helix/eventsub/subscriptions";
 const TWITCH_EVENTSUB_WS_URL: &str = "wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30";
 
+// https://twitchtokengenerator.com
+const TWITCH_OAUTH_CLIENT_ID: &str = "gp762nuuoqcoxypju8c569th9wz7q5";
+
 /// Initiates a Twitch eventsub feed listening for channels going offline after stream
 ///
 /// # Returns
 /// Returns an [`mpsc::Receiver`] channel with channel ID as a message
 /// Each message equates to a channel going offline
-#[instrument]
+#[instrument(skip(ct, broadcaster_ids))]
 pub async fn listen_for_offline(
     ct: CancellationToken,
     broadcaster_ids: Vec<u64>,
@@ -83,9 +86,10 @@ pub async fn listen_for_offline(
                 info!("Requesting Twitch to send `stream.offline` event for broadcaster ID {id}");
                 let req = client
                     .post(TWITCH_EVENTSUB_ADD_URL)
-                    .header("Client-Id", "gp762nuuoqcoxypju8c569th9wz7q5")
+                    .header("Client-Id", TWITCH_OAUTH_CLIENT_ID)
                     .bearer_auth(
-                        std::env::var("TWITCH_OAUTH_TOKEN").expect("Env var TWITCH_OAUTH_TOKEN is missing; Generate one on https://twitchtokengenerator.com/quick/yRxQrfaVAK"),
+                        std::env::var("TWITCH_OAUTH_ACCESS_TOKEN")
+                        .expect("Env var TWITCH_OAUTH_ACCESS_TOKEN is missing; Generate one on https://twitchtokengenerator.com/quick/yRxQrfaVAK"),
                     )
                     .json(&json!({
                         "type": "stream.offline",
@@ -102,6 +106,8 @@ pub async fn listen_for_offline(
                     error!("Request failed: {}", req.text().await.unwrap());
                 }
             }
+
+            info!("All broadcaster listened successfully!");
         });
     }
 

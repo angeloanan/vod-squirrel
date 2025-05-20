@@ -1,5 +1,11 @@
+use std::time::Duration;
+
+use reqwest::header::{HeaderMap, HeaderValue};
 use rlimit::Resource;
-use tracing::warn;
+use tokio_util::sync::CancellationToken;
+use tracing::{info, warn};
+
+use crate::twitch::TWITCH_PUBLIC_CLIENT_ID;
 
 /// Truncates a string to a maximum length, adding `...` to the end if it was truncated.
 ///
@@ -37,4 +43,38 @@ pub fn warn_ulimit() {
             "Your file limit is very low which may introduce an error while processing long videos. Consider raising your file limit via `ulimit -n 10240`"
         );
     }
+}
+
+#[must_use]
+pub fn init_http_client() -> reqwest::Client {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "Client-ID",
+        HeaderValue::from_static(TWITCH_PUBLIC_CLIENT_ID),
+    );
+    headers.insert(
+        "User-Agent",
+        HeaderValue::from_str(&format!(
+            "{}/{} (+{})",
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION"),
+            env!("CARGO_PKG_REPOSITORY")
+        ))
+        .unwrap(),
+    );
+
+    reqwest::Client::builder()
+        .default_headers(headers)
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .expect("Unable to build HTTP client")
+}
+
+/// Spawn a task that watches for CTRL + C signal and cancels a [`CancellationToken`] when caught
+pub fn spawn_ct_watcher(ct: CancellationToken) {
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.ok();
+        info!("Caught CTRL+C signal!");
+        ct.cancel();
+    });
 }

@@ -1,9 +1,9 @@
 use anyhow::{Context, Result, bail};
 use reqwest::{Body, Client, header::AUTHORIZATION};
 use serde_json::json;
-use tokio::fs::File;
-use tokio_util::io::ReaderStream;
-use tracing::{error, instrument};
+use tokio::{fs::File, select};
+use tokio_util::{io::ReaderStream, sync::CancellationToken};
+use tracing::{error, instrument, warn};
 
 #[derive(Debug, Default, Clone)]
 pub struct VideoDetail<'a> {
@@ -11,8 +11,9 @@ pub struct VideoDetail<'a> {
     pub description: &'a str,
 }
 
-#[instrument(skip(client, oauth_token, file, video_detail))]
+#[instrument(skip(ct, client, oauth_token, file, video_detail))]
 pub async fn upload_video<'a>(
+    ct: CancellationToken,
     client: Client,
     oauth_token: &str,
     video_detail: VideoDetail<'a>,
@@ -72,15 +73,14 @@ pub async fn upload_video<'a>(
 
     let file = pb.wrap_async_read(file);
 
-    let req = client
-        .put(upload_url)
-        .header(AUTHORIZATION, format!("Bearer {oauth_token}"))
-        .body(Body::wrap_stream(ReaderStream::new(file)))
-        .send()
-        .await
-        .unwrap();
-    pb.finish_and_clear();
-    println!("{}, {}", req.status(), req.text().await.unwrap());
+    select! {
+        () = ct.cancelled() => warn!("Cancellation token caught in the middle of a video upload! Video is not fully uploaded to YouTube!"),
 
-    Ok(())
+        req = client.put(upload_url).header(AUTHORIZATION, format!("Bearer {oauth_token}")).body(Body::wrap_stream(ReaderStream::new(file))).send() => {
+            pb.finish_and_clear();
+            let req = req.unwrap();
+            println!("{}, {}", req.status(), req.text().await.unwrap());
+        }
+    }
+    return Ok(());
 }
