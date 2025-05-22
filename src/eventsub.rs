@@ -142,8 +142,10 @@ async fn handle_ws_message(
                 "notification" => {
                     info!("Received notification message!");
                     let channel_id = &m["payload"]["event"]["broadcaster_user_id"]
-                        .as_u64()
+                        .as_str()
                         .context("Stream offline notification message does not contain broadcaster_user_id!")
+                        .unwrap()
+                        .parse::<u64>()
                         .unwrap();
                     tx.send(*channel_id)
                         .await
