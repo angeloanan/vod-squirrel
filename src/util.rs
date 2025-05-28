@@ -5,8 +5,6 @@ use rlimit::Resource;
 use tokio_util::sync::CancellationToken;
 use tracing::{info, warn};
 
-use crate::twitch::TWITCH_PUBLIC_CLIENT_ID;
-
 /// Truncates a string to a maximum length, adding `...` to the end if it was truncated.
 ///
 /// This function will continuously try to reduce length if string is being
@@ -48,10 +46,6 @@ pub fn warn_ulimit() {
 #[must_use]
 pub fn init_http_client() -> reqwest::Client {
     let mut headers = HeaderMap::new();
-    headers.insert(
-        "Client-ID",
-        HeaderValue::from_static(TWITCH_PUBLIC_CLIENT_ID),
-    );
     headers.insert(
         "User-Agent",
         HeaderValue::from_str(&format!(

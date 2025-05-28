@@ -23,10 +23,6 @@ use tokio::{fs::File, io::AsyncWriteExt, select, sync::Semaphore};
 use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, info, warn};
-use twitch::{
-    VideoInfo, extract_video_id, get_vod_info, get_vod_media, get_vod_playlist_file,
-    get_vod_tokens, list_channel_videos,
-};
 use util::{truncate_string, warn_ulimit};
 use youtube::{VideoDetail, upload_video};
 
@@ -150,10 +146,10 @@ async fn main() -> Result<()> {
                 .expect("Unable to create file on the given path!");
             tokio::fs::remove_file(path.clone()).await.unwrap();
 
-            let vod_id = extract_video_id(&vod)
+            let vod_id = twitch::extract_video_id(&vod)
                 .expect("Unable to extract for video ID. Did you paste in the correct URL / ID?");
 
-            let _video_info = get_and_print_video_info(client.clone(), vod_id)
+            let _video_info = get_and_print_video_info(vod_id)
                 .await
                 .expect("Unable to fetch for Twitch Video. Is the video public?");
 
@@ -190,10 +186,10 @@ async fn main() -> Result<()> {
                 "Unable to continue because `ffmpeg` is not installed!"
             );
             let access_token = google::watch_access_token(ct.clone());
-            let vod_id = extract_video_id(&vod)
+            let vod_id = twitch::extract_video_id(&vod)
                 .expect("Unable to extract for video ID. Did you paste in the correct URL / ID?");
 
-            let video_info = get_and_print_video_info(client.clone(), vod_id)
+            let video_info = get_and_print_video_info(vod_id)
                 .await
                 .expect("Unable to fetch for Twitch Video. Is the video public?");
 
@@ -250,10 +246,7 @@ async fn main() -> Result<()> {
 
                 let temp_download_dir = temp_download_dir.clone();
 
-                let vids = list_channel_videos(client.clone(), uid)
-                    .await
-                    .unwrap()
-                    .unwrap();
+                let vids = twitch::api::list_channel_videos(uid).await?.unwrap();
                 let latest_vod = vids.first().cloned().unwrap();
                 let vod_id = latest_vod.id.parse::<u64>().unwrap();
 
@@ -300,10 +293,10 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn get_and_print_video_info(client: reqwest::Client, vod_id: u64) -> Result<VideoInfo> {
+async fn get_and_print_video_info(vod_id: u64) -> Result<twitch::structs::VideoInfo> {
     info!("Downloading Twitch Video ID: {vod_id}");
 
-    let vod_info = get_vod_info(client.clone(), vod_id).await?;
+    let vod_info = twitch::api::get_video_info(vod_id).await?;
     let Some(vod_info) = vod_info else {
         panic!("VOD is innacessible!");
     };
@@ -326,19 +319,20 @@ async fn download(
     vod_id: u64,
 ) -> Result<PathBuf> {
     // Get CDN access tokens
-    let (token_value, token_signature) =
-        get_vod_tokens(client.clone(), None, vod_id).await.unwrap();
+    let (token_value, token_signature) = twitch::api::get_video_cdn_tokens(vod_id, None)
+        .await
+        .unwrap();
 
     // Get VOD HLS master playlist file
     let vod_playlist =
-        get_vod_playlist_file(client.clone(), vod_id, &token_value, &token_signature).await?;
+        twitch::cdn::get_video_playlist_file(vod_id, &token_value, &token_signature).await?;
 
     // TODO: Ensure that this is actually the highest quality variant of VOD
     let highest_quality = vod_playlist.variants.first().unwrap();
     info!("Highest quality media uri: {}", highest_quality.uri);
 
     // Get VOD media playlist file
-    let media = get_vod_media(client.clone(), &highest_quality.uri)
+    let media = twitch::cdn::get_video_media(&highest_quality.uri)
         .await
         .context("Getting VOD media")?;
     let segment_count = media.segments.len();
@@ -415,7 +409,7 @@ async fn archive(
     ct: CancellationToken,
     client: reqwest::Client,
     video_path: &Path,
-    video_info: VideoInfo,
+    video_info: twitch::structs::VideoInfo,
     access_token: &str,
 ) -> Result<()> {
     let final_file = File::open(video_path).await.unwrap();
