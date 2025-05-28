@@ -43,32 +43,48 @@ pub async fn listen_for_offline(
     let session_id = Arc::new(tokio::sync::OnceCell::new());
     let notify = Arc::new(tokio::sync::Notify::new());
 
-    info!("Connecting to Twitch EventSub via WebSocket");
-    let upgrade = client
-        .clone()
-        .get(TWITCH_EVENTSUB_WS_URL)
-        .upgrade()
-        .send()
-        .await
-        .context("Connecting to Twitch's EventSub Endpoint")?;
-
-    let ws = upgrade
-        .into_websocket()
-        .await
-        .context("Upgrading HTTP request into a WebSocket")?;
-    let (_sink, stream) = ws.split();
-
     // Handle websocket connection
     {
         let session_id = session_id.clone();
         let notify = notify.clone();
+        let ws_client = client.clone();
+
         tokio::spawn(async move {
-            tokio::pin!(stream);
-            loop {
-                tokio::select! {
-                    () = ct.cancelled() => break,
-                    () = tokio::time::sleep(Duration::from_secs(40)) => panic!("Didn't get any message for 40s. Connection is effectively poisoned!"),
-                    Some(Ok(message)) = stream.next() => handle_ws_message(message, &session_id, &notify, &tx).await
+            let mut connection_url: Option<String> = None;
+
+            'all: loop {
+                info!("(re-)Connecting to Twitch EventSub via WebSocket");
+                let upgrade = ws_client
+                    .clone()
+                    .get(connection_url.unwrap_or(TWITCH_EVENTSUB_WS_URL.to_string()))
+                    .upgrade()
+                    .send()
+                    .await
+                    .context("Connecting to Twitch's EventSub Endpoint")
+                    .unwrap();
+
+                let ws = upgrade
+                    .into_websocket()
+                    .await
+                    .context("Upgrading HTTP request into a WebSocket")
+                    .unwrap();
+                let (_sink, stream) = ws.split();
+
+                tokio::pin!(stream);
+                'session: loop {
+                    let action = tokio::select! {
+                        () = ct.cancelled() => break 'all,
+                        () = tokio::time::sleep(Duration::from_secs(40)) => {
+                            panic!("Didn't get any message for 40s. Connection is effectively poisoned!")
+                            // TODO: Handle re-registration (resend EventSub subscriptions)
+                        },
+                        Some(Ok(message)) = stream.next() => handle_ws_message(message, &session_id, &notify, &tx).await
+                    };
+
+                    if let SocketAction::Reconnect(url) = action {
+                        connection_url = Some(url);
+                        break 'session;
+                    }
                 }
             }
         });
@@ -114,12 +130,16 @@ pub async fn listen_for_offline(
     Ok(rx)
 }
 
+enum SocketAction {
+    None,
+    Reconnect(String),
+}
 async fn handle_ws_message(
     message: reqwest_websocket::Message,
     session_id: &OnceCell<Value>,
     notify: &Arc<Notify>,
     tx: &mpsc::Sender<u64>,
-) {
+) -> SocketAction {
     match message {
         Message::Text(m) => {
             let m: Value = serde_json::from_str(&m).unwrap();
@@ -129,16 +149,19 @@ async fn handle_ws_message(
                     .set(m["payload"]["session"]["id"].clone())
                     .unwrap();
                 notify.notify_one();
-                return;
+                return SocketAction::None;
             }
 
             let JsonString(message_type) = &m["metadata"]["message_type"] else {
                 error!("Twitch message is missing message_type\n{m}\nSkipping...");
-                return;
+                return SocketAction::None;
             };
 
             match message_type.as_str() {
-                "session_keepalive" => {} // noop
+                "session_keepalive" => {
+                    // Noop
+                    return SocketAction::None;
+                }
                 "notification" => {
                     info!("Received notification message!");
                     let channel_id = &m["payload"]["event"]["broadcaster_user_id"]
@@ -150,9 +173,19 @@ async fn handle_ws_message(
                     tx.send(*channel_id)
                         .await
                         .expect("Unable to announce offline");
+
+                    return SocketAction::None;
+                }
+                "session_reconnect" => {
+                    info!("Need to reconnect!");
+                    let reconnect_url = m["payload"]["session"]["reconnect_url"].as_str().unwrap();
+                    return SocketAction::Reconnect(reconnect_url.to_string());
                 }
 
-                other => warn!("Unhandled message type: {other}"),
+                other => {
+                    warn!("Unhandled message type: {other}");
+                    return SocketAction::None;
+                }
             }
         }
 
@@ -162,6 +195,8 @@ async fn handle_ws_message(
             panic!("Twitch closed WS connection!");
         }
 
-        _ => {}
+        _ => {
+            return SocketAction::None;
+        }
     }
 }
