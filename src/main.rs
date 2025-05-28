@@ -137,7 +137,18 @@ async fn main() -> Result<()> {
                 (ffmpeg::is_installed().await),
                 "Unable to continue because `ffmpeg` is not installed!"
             );
-            let output_file = path.canonicalize().expect("Invalid path given!");
+
+            // Try creating a file on the path
+            // Wont prevent TOCTOU but it'll ease the checking of valid filename
+            if path.exists() {
+                panic!(
+                    "File with the same name / path exists! Please delete or rename said file before continuing"
+                )
+            }
+            tokio::fs::File::create_new(path.clone())
+                .await
+                .expect("Unable to create file on the given path!");
+            tokio::fs::remove_file(path.clone()).await.unwrap();
 
             let vod_id = extract_video_id(&vod)
                 .expect("Unable to extract for video ID. Did you paste in the correct URL / ID?");
@@ -161,7 +172,7 @@ async fn main() -> Result<()> {
                 return Ok(());
             }
 
-            tokio::fs::rename(&file, output_file)
+            tokio::fs::rename(&file, path)
                 .await
                 .expect("Unable to move file!");
 
